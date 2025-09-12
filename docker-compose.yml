@@ -1,0 +1,27 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: pt_db
+      POSTGRES_USER: spring
+      POSTGRES_PASSWORD: spring
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+  app:
+    image: olegsirik/vsk-robot-zaytsev
+    depends_on:
+      - db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/pt_db
+      SPRING_DATASOURCE_USERNAME: spring
+      SPRING_DATASOURCE_PASSWORD: spring
+    ports:
+      - "8080:8080"
+volumes:
+  db_data:
+
+
+

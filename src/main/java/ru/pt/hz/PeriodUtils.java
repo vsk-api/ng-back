@@ -1,7 +1,10 @@
 package ru.pt.hz;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.time.Period;
+
+import ru.pt.exception.BadRequestException;
 
 public class PeriodUtils {
     public static int comparePeriods(Period p1, Period p2) {
@@ -34,7 +37,20 @@ public class PeriodUtils {
         return Period.parse(period) != null;
     }
 
-    public static boolean isDateInRange(String date1, String date2, String range) {
+    public static String[] getPeriods(String periods) {
+        if (periods == null) {
+            throw new IllegalArgumentException("periods must not be null");
+        }
+        String[] parts = periods.split(",");
+        for (String part : parts) {
+            if (!isPeriodValid(part.trim())) {
+                return new String[0];
+            }
+        }
+        return parts;
+    }
+
+    public static boolean isDateInRange(OffsetDateTime date1, OffsetDateTime date2, String range) {
         if (date1 == null || date2 == null || range == null) {
             throw new IllegalArgumentException("date1, date2, and range must not be null");
         }
@@ -49,75 +65,15 @@ public class PeriodUtils {
         } catch (Exception e) {
             throw new IllegalArgumentException("Range period format is invalid, expected ISO-8601 period, e.g. 'P0D-P15D'");
         }
-        java.time.OffsetDateTime d1, d2;
-        try {
-            d1 = java.time.OffsetDateTime.parse(date1);
-            d2 = java.time.OffsetDateTime.parse(date2);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("date1 or date2 is not a valid ISO_OFFSET_DATE_TIME string");
-        }
-        java.time.OffsetDateTime minDate = d1.plus(minPeriod);
-        java.time.OffsetDateTime maxDate = d1.plus(maxPeriod);
-        if (minDate.isAfter(d2) || maxDate.isBefore(d2)) {
+        
+        java.time.OffsetDateTime minDate = date1.plus(minPeriod);
+        java.time.OffsetDateTime maxDate = date1.plus(maxPeriod);
+        if (minDate.isAfter(date2) || maxDate.isBefore(date2)) {
             return false;
         }
         return true;
 
     }
 
-    public static String isDatesInList(String date1, String date2, String list) {
-        if (date1 == null || date2 == null || list == null) {
-            throw new IllegalArgumentException("date1, date2, and list must not be null");
-        }
-        String[] parts = list.split(",");
-    // Check if all elements of parts are valid periods
-    for (String part : parts) {
-        try {
-            Period.parse(part.trim());
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid period in list: " + part);
-        }
-    }
 
-    if (parts.length == 1) {
-        // If only one period, return date1 + part[0]
-        java.time.OffsetDateTime d1 = java.time.OffsetDateTime.parse(date1);
-        Period p = Period.parse(parts[0].trim());
-        java.time.OffsetDateTime result = d1.plus(p);
-        return result.toString();
-    }
-
-    // Calculate period between date2 and date1
-    java.time.OffsetDateTime d1 = java.time.OffsetDateTime.parse(date1);
-    java.time.OffsetDateTime d2 = java.time.OffsetDateTime.parse(date2);
-
-    // Calculate the period between d1 and d2
-    Period between = Period.between(d1.toLocalDate(), d2.toLocalDate());
-
-    // Check if the calculated period is in the list
-    boolean found = false;
-    for (String part : parts) {
-        Period p = Period.parse(part.trim());
-        if (p.equals(between)) {
-            found = true;
-            break;
-        }
-    }
-    if (found) {
-        return date1;
-    } else {
-        throw new IllegalArgumentException("The period between dates is not in the list of allowed periods");
-    }
-    }
-
-    public static String getNextMonth(String date) {
-        if (date == null) {
-            throw new IllegalArgumentException("date must not be null");
-        }
-        java.time.OffsetDateTime d = java.time.OffsetDateTime.parse(date);
-        java.time.OffsetDateTime result = d.plus(Period.parse("P1M"));
-        // Set the day of month to 1
-        result = result.withDayOfMonth(1);
-        return result.toString();
-    }
 }

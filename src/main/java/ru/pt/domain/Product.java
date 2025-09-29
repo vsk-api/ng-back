@@ -9,7 +9,7 @@ public class Product {
 
     @Id
     @Column(name = "id", nullable = false)
-    private Long id;
+    private Integer id;
 
     @Column(name = "lob", nullable = false, length = 30)
     private String lob;
@@ -29,8 +29,8 @@ public class Product {
     @Column(name = "isDeleted", nullable = false)
     private boolean isDeleted = false;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Integer getId() { return id; }
+    public void setId(Integer id) { this.id = id; }
     public String getLob() { return lob; }
     public void setLob(String lob) { this.lob = lob; }
     public String getCode() { return code; }

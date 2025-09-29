@@ -8,15 +8,15 @@ import ru.pt.domain.ProductVersion;
 
 import java.util.Optional;
 
-public interface ProductVersionRepository extends JpaRepository<ProductVersion, Long> {
+public interface ProductVersionRepository extends JpaRepository<ProductVersion, Integer> {
 
     @Query("select pv from ProductVersion pv where pv.productId = :productId and pv.versionNo = :versionNo")
-    Optional<ProductVersion> findByProductIdAndVersionNo(@Param("productId") Long productId,
+    Optional<ProductVersion> findByProductIdAndVersionNo(@Param("productId") Integer productId,
                                                          @Param("versionNo") Integer versionNo);
 
     @Modifying
     @Query("delete from ProductVersion pv where pv.productId = :productId and pv.versionNo = :versionNo")
-    int deleteByProductIdAndVersionNo(@Param("productId") Long productId,
+    int deleteByProductIdAndVersionNo(@Param("productId") Integer productId,
                                       @Param("versionNo") Integer versionNo);
 }
 

@@ -6,7 +6,7 @@ import ru.pt.domain.NumberGenerator;
 import ru.pt.repository.NumberGeneratorRepository;
 
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
+//import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Service
@@ -19,7 +19,7 @@ public class NumberGeneratorService {
     }
 
     @Transactional
-    public NumberGenerator getNext(Long id) {
+    public NumberGenerator getNext(Integer id) {
         NumberGenerator ng = repository.findForUpdate(id)
                 .orElseThrow(() -> new IllegalArgumentException("Generator not found: " + id));
 
@@ -51,9 +51,17 @@ public class NumberGeneratorService {
         return repository.save(ng);
     }
 
-    public String getNumber(Map<String, String> values, Long id) {
-        NumberGenerator ng = repository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Generator not found: " + id));
+    @Transactional
+    public String getNumber(Map<String, String> values, Long id, String productCode) {
+        NumberGenerator ng = null;
+        if ( productCode != null && !productCode.isEmpty() ) {
+            ng = repository.findByProductCode(productCode)
+                    .orElseThrow(() -> new IllegalArgumentException("Generator not found: " + productCode));
+        }
+        if ( ng == null && id == null ) {
+            throw new IllegalArgumentException("Generator not found: " + id + " " + productCode);
+        }
+        ng = getNext(ng.getId());
 
         String mask = ng.getMask();
         StringBuilder resultMask = new StringBuilder(mask);
@@ -102,6 +110,29 @@ public class NumberGeneratorService {
         for (int i = 0; i < n; i++) sb.append(ch);
         return sb.toString();
     }
+
+//create void create(NumberGenerator numberGenerator)
+    @Transactional
+    public void create(NumberGenerator numberGenerator) {
+        repository.save(numberGenerator);
+    }
+
+    @Transactional
+    public void update(NumberGenerator numberGenerator) {
+        if (numberGenerator.getId() == null) {
+            throw new IllegalArgumentException("NumberGenerator ID must not be null for update");
+        }
+        NumberGenerator existing = repository.findById(numberGenerator.getId())
+                .orElseThrow(() -> new IllegalArgumentException("NumberGenerator not found with id: " + numberGenerator.getId()));
+        existing.setProductCode(numberGenerator.getProductCode());
+        existing.setMask(numberGenerator.getMask());
+        existing.setResetPolicy(numberGenerator.getResetPolicy());
+        existing.setMaxValue(numberGenerator.getMaxValue());
+        existing.setLastReset(numberGenerator.getLastReset());
+        existing.setCurrentValue(numberGenerator.getCurrentValue());
+        repository.save(existing);
+    }
+
 }
 
 

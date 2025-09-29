@@ -9,11 +9,13 @@ import ru.pt.domain.NumberGenerator;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 
-public interface NumberGeneratorRepository extends JpaRepository<NumberGenerator, Long> {
+public interface NumberGeneratorRepository extends JpaRepository<NumberGenerator, Integer> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select ng from NumberGenerator ng where ng.id = :id")
-    Optional<NumberGenerator> findForUpdate(@Param("id") Long id);
+    Optional<NumberGenerator> findForUpdate(@Param("id") Integer id);
+
+    Optional<NumberGenerator> findByProductCode(String productCode);
 }
 
 

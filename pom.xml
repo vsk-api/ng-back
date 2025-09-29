@@ -69,6 +69,16 @@
       <artifactId>pdfbox-io</artifactId>
       <version>3.0.2</version>
     </dependency>
+
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-database-postgresql</artifactId>
+    </dependency>
   </dependencies>
 
   <build>
@@ -83,6 +93,19 @@
               <artifactId>lombok</artifactId>
             </exclude>
           </excludes>
+        </configuration>
+      </plugin>
+      
+      <plugin>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-maven-plugin</artifactId>
+        <configuration>
+          <url>jdbc:postgresql://${db.host:localhost}:5432/pt_db</url>
+          <user>${db.username:spring}</user>
+          <password>${db.password:spring}</password>
+          <locations>
+            <location>classpath:db/migration</location>
+          </locations>
         </configuration>
       </plugin>
     </plugins>

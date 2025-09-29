@@ -1,9 +1,9 @@
 package ru.pt.api;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.pt.domain.Lob;
+
+import ru.pt.domain.lob.LobModel;
 import ru.pt.service.LobService;
 
 import java.util.List;
@@ -22,7 +22,7 @@ public class AdminLobController {
 
     // get /admin/lobs return id, Code, Name from repository
     @GetMapping
-    public List<Map<String, Object>> list() {
+    public List<Map<String, Object>> listLobs() {
         return lobService.listActiveSummaries().stream()
                 .map(row -> Map.of(
                         "id", row[0],
@@ -33,32 +33,28 @@ public class AdminLobController {
     }
 
     // get /admin/lobs/{lob_code} returns json
-    @GetMapping("/{lobCode}")
-    public ResponseEntity<JsonNode> getByCode(@PathVariable("lobCode") String lobCode) {
-        return lobService.getByCode(lobCode)
-                .map(l -> ResponseEntity.ok(l.getLob()))
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    @GetMapping("/{code}")
+    public ResponseEntity<LobModel> getByCode(@PathVariable("code") String code) {
+        return ResponseEntity.ok(lobService.getByCode(code));
     }
 
     // post /admin/lobs insert new record
     @PostMapping
-    public ResponseEntity<Lob> create(@RequestBody JsonNode payload) {
-        Lob created = lobService.create(payload);
+    public ResponseEntity<LobModel> createLob(@RequestBody LobModel payload) {
+        LobModel created = lobService.create(payload);
         return ResponseEntity.ok(created);
     }
 
-    // put /admin/lobs/{lob_code} replace json, fix name and mpCode/id rules
-    @PutMapping("/{lobCode}")
-    public ResponseEntity<Lob> update(@PathVariable("lobCode") String lobCode, @RequestBody JsonNode payload) {
-        return lobService.updateByCode(lobCode, payload)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+// put /admin/lobs/{lob_code} replace json, fix name and mpCode/id rules
+    @PutMapping("/{code}")
+    public ResponseEntity<LobModel> updateLob(@PathVariable("code") String code, @RequestBody LobModel payload) {
+        return ResponseEntity.ok(lobService.updateByCode(code, payload));
     }
 
     // delete /admin/lobs/{lob_code} soft delete
-    @DeleteMapping("/{lobCode}")
-    public ResponseEntity<Void> delete(@PathVariable("lobCode") String lobCode) {
-        boolean deleted = lobService.softDeleteByCode(lobCode);
+    @DeleteMapping("/{code}")
+    public ResponseEntity<Void> deleteLob(@PathVariable("code") String code) {
+        boolean deleted = lobService.softDeleteByCode(code);
         return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 }

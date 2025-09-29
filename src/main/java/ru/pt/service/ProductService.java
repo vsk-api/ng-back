@@ -1,19 +1,18 @@
 package ru.pt.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
+
+import ru.pt.domain.NumberGenerator;
 import ru.pt.domain.Product;
 import ru.pt.domain.ProductVersion;
+import ru.pt.domain.productVersion.ProductVersionModel;
+import ru.pt.domain.productVersion.PvPackage;
+import ru.pt.exception.BadRequestException;
 import ru.pt.repository.ProductRepository;
 import ru.pt.repository.ProductVersionRepository;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -24,14 +23,13 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final ProductVersionRepository productVersionRepository;
-    private final DataSource dataSource;
-
+    private final NumberGeneratorService numberGeneratorService;
     public ProductService(ProductRepository productRepository,
                           ProductVersionRepository productVersionRepository,
-                          DataSource dataSource) {
+                          NumberGeneratorService numberGeneratorService) {
         this.productRepository = productRepository;
         this.productVersionRepository = productVersionRepository;
-        this.dataSource = dataSource;
+        this.numberGeneratorService = numberGeneratorService;
     }
 
     public List<Map<String, Object>> listSummaries() {
@@ -50,45 +48,81 @@ public class ProductService {
     }
 
     @Transactional
-    public Product create(JsonNode productJson) {
-        requireText(productJson, "lob");
-        requireText(productJson, "code");
-        requireText(productJson, "name");
-
-        long id = nextId();
-
-        if (productJson instanceof ObjectNode obj) {
-            obj.put("id", id);
-            obj.put("versionNo", 1);
-            obj.put("versionStatus", "DEV");
+    public ProductVersionModel create(ProductVersionModel productVersionModel) {
+        if (productVersionModel.getLob() == null || productVersionModel.getLob().trim().isEmpty()) {
+            throw new BadRequestException("lob must not be empty");
+        }
+        if (productVersionModel.getCode() == null || productVersionModel.getCode().trim().isEmpty()) {
+            throw new BadRequestException("code must not be empty");
+        }
+        if (productVersionModel.getName() == null || productVersionModel.getName().trim().isEmpty()) {
+            throw new BadRequestException("name must not be empty");
         }
 
-        Product p = new Product();
-        p.setId(id);
-        p.setLob(productJson.get("lob").asText());
-        p.setCode(productJson.get("code").asText());
-        p.setName(productJson.get("name").asText());
-        p.setProdVersionNo(null);
-        p.setDevVersionNo(1);
-        p.setDeleted(false);
-        productRepository.save(p);
+        Integer id = productRepository.getNextProductId();
+
+        Product product = new Product();
+        product.setId(id);
+        product.setProdVersionNo(null);
+        product.setDevVersionNo(1);
+        product.setDeleted(false);
+        product.setLob(productVersionModel.getLob());
+        product.setCode(productVersionModel.getCode());
+        product.setName(productVersionModel.getName());
+        productRepository.save(product);
+
+        productVersionModel.setId(id);
+        productVersionModel.setVersionNo(1);
+        productVersionModel.setVersionStatus("DEV");
+ 
+        if (productVersionModel.getQuoteValidator() == null) {
+            productVersionModel.setQuoteValidator(new ArrayList<>());
+        }
+        if (productVersionModel.getSaveValidator() == null) {
+            productVersionModel.setSaveValidator(new ArrayList<>());
+        }
+        if (productVersionModel.getPackages() == null ) {
+            productVersionModel.setPackages(new ArrayList<>());
+            }
+        if (productVersionModel.getPackages().size() == 0) {
+            PvPackage pvPackage = new PvPackage();
+            pvPackage.setCode(0);
+            pvPackage.setName("0");
+            productVersionModel.getPackages().add(pvPackage);
+            pvPackage.setCovers(new ArrayList<>());
+        }
 
         ProductVersion pv = new ProductVersion();
         pv.setProductId(id);
         pv.setVersionNo(1);
-        pv.setProduct(productJson);
+        pv.setProduct(productVersionModel);
+        
         productVersionRepository.save(pv);
 
-        return p;
+        //if productVersion.getNumberGenerator() is not null, then create a new number generator
+        if (productVersionModel.getNumberGenerator() != null) {
+            NumberGenerator numberGenerator = new NumberGenerator();
+            numberGenerator.setId(productVersionModel.getId());
+            numberGenerator.setMask(productVersionModel.getNumberGenerator().getMask());
+            numberGenerator.setMaxValue(productVersionModel.getNumberGenerator().getMaxValue());
+            numberGenerator.setProductCode(productVersionModel.getCode());
+            numberGenerator.setResetPolicy(productVersionModel.getNumberGenerator().getResetPolicy());
+
+            numberGeneratorService.create(numberGenerator);
+
+        }
+        return productVersionModel;
     }
 
-    public Optional<JsonNode> getVersion(Long id, Integer versionNo) {
-        return productVersionRepository.findByProductIdAndVersionNo(id, versionNo)
-                .map(ProductVersion::getProduct);
+    public ProductVersionModel getVersion(Integer id, Integer versionNo) {
+        ProductVersion pv = productVersionRepository.findByProductIdAndVersionNo(id, versionNo).orElse(null);
+                
+        ProductVersionModel productVersionModel = pv.getProduct();
+        return productVersionModel;
     }
 
     @Transactional
-    public ProductVersion createVersionFrom(Long id, Integer versionNo) {
+    public ProductVersion createVersionFrom(Integer id, Integer versionNo) {
         Product product = productRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
         if (product.getDevVersionNo() != null) {
@@ -96,19 +130,17 @@ public class ProductService {
         }
         int newVersion = product.getProdVersionNo() == null ? 1 : product.getProdVersionNo() + 1;
 
-        JsonNode baseJson = productVersionRepository.findByProductIdAndVersionNo(id, versionNo)
+        ProductVersionModel productVersionModel = productVersionRepository.findByProductIdAndVersionNo(id, versionNo)
                 .orElseThrow(() -> new IllegalArgumentException("Base version not found"))
                 .getProduct();
 
-        if (baseJson instanceof ObjectNode obj) {
-            obj.put("versionNo", newVersion);
-            obj.put("versionStatus", "DEV");
-        }
+        productVersionModel.setVersionNo(newVersion);
+        productVersionModel.setVersionStatus("DEV");
 
         ProductVersion pv = new ProductVersion();
         pv.setProductId(id);
         pv.setVersionNo(newVersion);
-        pv.setProduct(baseJson);
+        pv.setProduct(productVersionModel);
         productVersionRepository.save(pv);
 
         product.setDevVersionNo(newVersion);
@@ -117,26 +149,39 @@ public class ProductService {
     }
 
     @Transactional
-    public JsonNode updateVersion(Long id, Integer versionNo, JsonNode newJson) {
+    public ProductVersionModel updateVersion(Integer id, Integer versionNo, ProductVersionModel newProductVersionModel) {
         Product product = productRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
         if (product.getDevVersionNo() == null || !product.getDevVersionNo().equals(versionNo)) {
             throw new IllegalArgumentException("only dev version can be updated");
         }
-        if (newJson instanceof ObjectNode obj) {
-            obj.put("id", id);
-            obj.put("versionNo", versionNo);
-            obj.put("versionStatus", "DEV");
-        }
+
+        newProductVersionModel.setId(id);
+        newProductVersionModel.setVersionNo(versionNo);
+        newProductVersionModel.setVersionStatus("DEV");
+
         ProductVersion pv = productVersionRepository.findByProductIdAndVersionNo(id, versionNo)
                 .orElseThrow(() -> new IllegalArgumentException("Version not found"));
-        pv.setProduct(newJson);
+        pv.setProduct(newProductVersionModel);
         productVersionRepository.save(pv);
-        return newJson;
+
+        if (newProductVersionModel.getNumberGenerator() != null) {
+            NumberGenerator numberGenerator = new NumberGenerator();
+            numberGenerator.setId(newProductVersionModel.getId());
+            numberGenerator.setMask(newProductVersionModel.getNumberGenerator().getMask());
+            numberGenerator.setMaxValue(newProductVersionModel.getNumberGenerator().getMaxValue());
+            numberGenerator.setProductCode(newProductVersionModel.getCode());
+            numberGenerator.setResetPolicy(newProductVersionModel.getNumberGenerator().getResetPolicy());
+
+            numberGeneratorService.create(numberGenerator);
+
+        }
+
+        return newProductVersionModel;
     }
 
     @Transactional
-    public void softDeleteProduct(Long id) {
+    public void softDeleteProduct(Integer id) {
         Product product = productRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
         product.setDeleted(true);
@@ -144,7 +189,7 @@ public class ProductService {
     }
 
     @Transactional
-    public void deleteVersion(Long id, Integer versionNo) {
+    public void deleteVersion(Integer id, Integer versionNo) {
         Product product = productRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found"));
         if (product.getDevVersionNo() == null || !product.getDevVersionNo().equals(versionNo)) {
@@ -159,24 +204,19 @@ public class ProductService {
         product.setProdVersionNo(pv == null ? null : Math.max(0, pv));
         productRepository.save(product);
     }
-
-    private void requireText(JsonNode node, String field) {
-        JsonNode v = node.get(field);
-        if (v == null || v.isNull() || !v.isTextual() || v.asText().isBlank()) {
-            throw new IllegalArgumentException("Field '" + field + "' is required");
-        }
+    // get product by id
+    public Product getProduct(Integer id) {
+        return productRepository.findByIdAndIsDeletedFalse(id)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
+    }
+    //get product by code and isDeletedFalse
+    public Product getProductByCode(String code) {
+        return productRepository.findByCodeAndIsDeletedFalse(code)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
     }
 
-    private long nextId() {
-        try (Connection c = dataSource.getConnection();
-             PreparedStatement ps = c.prepareStatement("select nextval('pt_products_seq')");
-             ResultSet rs = ps.executeQuery()) {
-            if (rs.next()) return rs.getLong(1);
-            throw new IllegalStateException("No value from sequence pt_products_seq");
-        } catch (SQLException e) {
-            throw new IllegalStateException("Sequence pt_products_seq is missing or inaccessible", e);
-        }
-    }
+
+    
 }
 
 

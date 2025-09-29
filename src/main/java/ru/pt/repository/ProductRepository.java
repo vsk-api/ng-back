@@ -7,9 +7,9 @@ import ru.pt.domain.Product;
 import java.util.List;
 import java.util.Optional;
 
-public interface ProductRepository extends JpaRepository<Product, Long> {
+public interface ProductRepository extends JpaRepository<Product, Integer> {
 
-    Optional<Product> findByIdAndIsDeletedFalse(Long id);
+    Optional<Product> findByIdAndIsDeletedFalse(Integer id);
 
     Optional<Product> findByCodeAndIsDeletedFalse(String code);
 
@@ -18,5 +18,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("select p.id, p.lob, p.code, p.name, p.prodVersionNo, p.devVersionNo from Product p where p.isDeleted = false order by p.code")
     List<Object[]> listActiveSummaries();
+
+    @Query(value = "SELECT nextval('pt_seq')", nativeQuery = true)
+    Integer getNextProductId();
 }
 

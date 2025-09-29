@@ -7,16 +7,24 @@ spring:
     password: spring
     driver-class-name: org.postgresql.Driver
   jpa:
+    show-sql: true
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
         format_sql: true
-        jdbc.time_zone: UTC
+        '[jdbc.time_zone]': UTC
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    clean-disabled: false
   jackson:
     serialization:
-      WRITE_DATES_AS_TIMESTAMPS: false
+      '[WRITE_DATES_AS_TIMESTAMPS]': false
 
 server:
   port: 8080

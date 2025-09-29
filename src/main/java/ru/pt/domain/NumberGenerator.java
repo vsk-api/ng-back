@@ -8,8 +8,8 @@ import java.time.LocalDate;
 public class NumberGenerator {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id", nullable = false)
+    private Integer id;
 
     @Column(name = "product_code", nullable = false, length = 100)
     private String productCode;
@@ -29,8 +29,8 @@ public class NumberGenerator {
     @Column(name = "current_value", nullable = false)
     private Integer currentValue = 0;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Integer getId() { return id; }
+    public void setId(Integer id) { this.id = id; }
 
     public String getProductCode() { return productCode; }
     public void setProductCode(String productCode) { this.productCode = productCode; }

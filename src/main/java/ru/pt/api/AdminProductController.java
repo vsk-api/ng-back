@@ -1,10 +1,8 @@
 package ru.pt.api;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.pt.domain.Product;
-import ru.pt.domain.ProductVersion;
+import ru.pt.domain.productVersion.ProductVersionModel;
 import ru.pt.service.ProductService;
 
 import java.util.List;
@@ -26,40 +24,36 @@ public class AdminProductController {
     }
 
     @PostMapping
-    public ResponseEntity<Product> create(@RequestBody JsonNode payload) {
-        Product created = productService.create(payload);
+    public ResponseEntity<ProductVersionModel> create(@RequestBody ProductVersionModel payload) {
+        ProductVersionModel created = productService.create(payload);
         return ResponseEntity.ok(created);
     }
 
     @GetMapping("/{id}/versions/{versionNo}")
-    public ResponseEntity<JsonNode> getVersion(@PathVariable("id") Long id, @PathVariable("versionNo") Integer versionNo) {
-        return productService.getVersion(id, versionNo)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<ProductVersionModel> getVersion(@PathVariable("id") Integer id, @PathVariable("versionNo") Integer versionNo) {
+        return ResponseEntity.ok(productService.getVersion(id, versionNo));
     }
 
     @PostMapping("/{id}/versions/{versionNo}/cmd/create")
-    public ResponseEntity<JsonNode> createVersion(@PathVariable("id") Long id, @PathVariable("versionNo") Integer versionNo) {
-        JsonNode json = productService.createVersionFrom(id, versionNo).getProduct();
-        return ResponseEntity.ok(json);
+    public ResponseEntity<ProductVersionModel> createVersion(@PathVariable("id") Integer id, @PathVariable("versionNo") Integer versionNo) {
+        return ResponseEntity.ok(productService.createVersionFrom(id, versionNo).getProduct());
     }
 
     @PutMapping("/{id}/versions/{versionNo}")
-    public ResponseEntity<JsonNode> updateVersion(@PathVariable("id") Long id,
+    public ResponseEntity<ProductVersionModel> updateVersion(@PathVariable("id") Integer id,
                                                   @PathVariable("versionNo") Integer versionNo,
-                                                  @RequestBody JsonNode payload) {
-        JsonNode updatedJson = productService.updateVersion(id, versionNo, payload);
-        return ResponseEntity.ok(updatedJson);
+                                                  @RequestBody ProductVersionModel payload) {
+        return ResponseEntity.ok(productService.updateVersion(id, versionNo, payload));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable("id") Long id) {
+    public ResponseEntity<Void> deleteProduct(@PathVariable("id") Integer id) {
         productService.softDeleteProduct(id);
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}/versions/{versionNo}")
-    public ResponseEntity<Void> deleteVersion(@PathVariable("id") Long id, @PathVariable("versionNo") Integer versionNo) {
+    public ResponseEntity<Void> deleteVersion(@PathVariable("id") Integer id, @PathVariable("versionNo") Integer versionNo) {
         productService.deleteVersion(id, versionNo);
         return ResponseEntity.noContent().build();
     }

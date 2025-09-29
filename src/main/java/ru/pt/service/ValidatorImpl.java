@@ -1,26 +1,14 @@
 package ru.pt.service;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import ru.pt.domain.lob.LobVar;
+import ru.pt.domain.lob.VarDataType;
+
 public class ValidatorImpl {
 
-    public static boolean validate(Map<String, String> dataMap, String leftKey, String rightKey, String rightValue, String ruleType, String dataType) {
-
-        String left = dataMap.get(leftKey);
-        if (left == null) return false;
-
-        String right = dataMap.get(rightKey);
-        if (right == null) right = rightValue;
-
-        if (dataType.equals("NUMBER")) {
-            return checkNumber(ruleType, left, right);
-        }
-        if (dataType.equals("STRING")) {
-            return checkString(ruleType, left, right);
-        }
-        return false;
-    }
 
     private static boolean checkString(String type, String v1, String v2) {
 
@@ -54,4 +42,26 @@ public class ValidatorImpl {
         }
     }
 
+    public static boolean validate(List<LobVar> dataMap, String leftKey, String rightKey, String rightValue, String ruleType) {
+        LobVar leftVarDef = dataMap.stream().filter(v -> v.getVarCode().equals(leftKey)).findFirst().orElse(null);
+        LobVar rightVarDef = dataMap.stream().filter(v -> v.getVarCode().equals(rightKey)).findFirst().orElse(null);
+        if (rightVarDef != null) {
+            if (! leftVarDef.getVarType().equalsIgnoreCase(rightVarDef.getVarType())) {
+                return false;
+            }
+        }
+        if ( rightVarDef == null) {
+            rightVarDef = new LobVar(rightKey, "","",leftVarDef.getVarType(), rightValue, leftVarDef.getVarDataType());
+        }
+
+        if (leftVarDef == null || rightVarDef == null) return false;
+        if (leftVarDef.getVarDataType() == VarDataType.NUMBER) {
+            return checkNumber(ruleType, leftVarDef.getVarValue(), rightVarDef.getVarValue());
+        }
+        if (leftVarDef.getVarDataType() == VarDataType.STRING) {
+            return checkString(ruleType, leftVarDef.getVarValue(), rightVarDef.getVarValue());
+        }
+        
+        return false;
+    }
 }
